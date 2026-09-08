@@ -1,0 +1,55 @@
+{
+  "expo": {
+    "name": "London Cafe CDJ",
+    "slug": "london-cafe-cdj",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "icon": "./assets/Logo.png",
+    "ios": {
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSCameraUsageDescription": "London Cafe necesita acceso a la cámara para tomar fotografías de evidencia de las tareas.",
+        "NSPhotoLibraryUsageDescription": "London Cafe necesita acceso a la galería para adjuntar fotos de evidencia de las tareas.",
+        "NSPhotoLibraryAddUsageDescription": "London Cafe necesita permiso para guardar fotos de evidencia."
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/Logo.png",
+        "backgroundColor": "#F8F5F2"
+      },
+      "permissions": [
+        "CAMERA",
+        "READ_EXTERNAL_STORAGE",
+        "WRITE_EXTERNAL_STORAGE"
+      ]
+    },
+    "extra": {
+      "apiUrl": "http://192.168.1.162:4000"
+    },
+    "plugins": [
+      "expo-font",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "London Cafe necesita acceso a tus fotos para adjuntar evidencia de las tareas.",
+          "cameraPermission": "London Cafe necesita acceso a tu cámara para tomar fotos de evidencia de las tareas."
+        }
+      ],
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/Logo.png",
+          "resizeMode": "contain",
+          "backgroundColor": "#F8F5F2"
+        }
+      ]
+    ]
+  }
+}
+
+
