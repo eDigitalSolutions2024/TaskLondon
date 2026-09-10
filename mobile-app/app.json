@@ -11,10 +11,12 @@
     "icon": "./assets/Logo.png",
     "ios": {
       "supportsTablet": true,
+      "bundleIdentifier": "com.londoncafecdj.app",
       "infoPlist": {
         "NSCameraUsageDescription": "London Cafe necesita acceso a la cámara para tomar fotografías de evidencia de las tareas.",
         "NSPhotoLibraryUsageDescription": "London Cafe necesita acceso a la galería para adjuntar fotos de evidencia de las tareas.",
-        "NSPhotoLibraryAddUsageDescription": "London Cafe necesita permiso para guardar fotos de evidencia."
+        "NSPhotoLibraryAddUsageDescription": "London Cafe necesita permiso para guardar fotos de evidencia.",
+        "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {
@@ -23,13 +25,17 @@
         "backgroundColor": "#F8F5F2"
       },
       "permissions": [
-        "CAMERA",
-        "READ_EXTERNAL_STORAGE",
-        "WRITE_EXTERNAL_STORAGE"
+        "android.permission.CAMERA",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE",
+        "android.permission.RECORD_AUDIO"
       ]
     },
     "extra": {
-      "apiUrl": "http://192.168.1.162:4000"
+      "apiUrl": "http://192.168.1.162:4000",
+      "eas": {
+        "projectId": "5d810cc1-362e-4387-87db-1ea7c4dfc75d"
+      }
     },
     "plugins": [
       "expo-font",
@@ -48,8 +54,7 @@
           "backgroundColor": "#F8F5F2"
         }
       ]
-    ]
+    ],
+    "owner": "lxaztekxl-team"
   }
 }
-
-

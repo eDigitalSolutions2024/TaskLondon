@@ -22,7 +22,13 @@ async function login(req, res, next) {
     });
     if (!user) return res.status(401).json({ message: 'Empleado no encontrado o inactivo' });
 
-    if (password && user.passwordHash) {
+    if (user.role === 'admin') {
+      if (!user.passwordHash) {
+        return res.status(401).json({ message: 'Esta cuenta de administrador no tiene contraseña configurada' });
+      }
+      if (!password) {
+        return res.status(401).json({ message: 'Contraseña requerida' });
+      }
       const valid = await bcrypt.compare(password, user.passwordHash);
       if (!valid) return res.status(401).json({ message: 'Contraseña inválida' });
     }

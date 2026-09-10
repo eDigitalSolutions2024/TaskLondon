@@ -17,7 +17,7 @@ interface AuthContextValue {
   authMessage: string;
   authMode: SplashMode;
   isAuthenticated: boolean;
-  login: (nameOrUsername: string, password?: string, shift?: "apertura" | "cierre") => Promise<void>;
+  login: (nameOrUsername: string, password?: string, shift?: "apertura" | "cierre", isAdminHint?: boolean) => Promise<void>;
   logout: () => Promise<void>;
 }
 
@@ -73,10 +73,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     })();
   }, []);
 
-  const login = useCallback(async (nameOrUsername: string, password?: string, shift?: "apertura" | "cierre") => {
+  const login = useCallback(async (nameOrUsername: string, password?: string, shift?: "apertura" | "cierre", isAdminHint?: boolean) => {
     setIsAuthenticating(true);
     // Modo tentativo inicial
-    const initialMode: SplashMode = shift === "cierre" ? "cierre" : shift === "apertura" ? "apertura" : "general";
+    const initialMode: SplashMode = isAdminHint
+      ? "admin"
+      : shift === "cierre"
+      ? "cierre"
+      : shift === "apertura"
+      ? "apertura"
+      : "general";
     setAuthMode(initialMode);
     setAuthMessage("Iniciando sesión...");
 

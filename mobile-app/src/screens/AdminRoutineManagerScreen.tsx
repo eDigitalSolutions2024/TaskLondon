@@ -3,7 +3,9 @@ import React, { useCallback, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  KeyboardAvoidingView,
   Modal,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -336,7 +338,14 @@ export default function AdminRoutineManagerScreen() {
 
       {/* Modal Sección */}
       <Modal visible={sectionModalVisible} transparent animationType="fade">
-        <View style={styles.modalOverlay}>
+        <KeyboardAvoidingView
+          style={styles.modalOverlay}
+          behavior={Platform.OS === "ios" ? "padding" : undefined}
+        >
+          <ScrollView
+            contentContainerStyle={{ flexGrow: 1, justifyContent: "center" }}
+            keyboardShouldPersistTaps="handled"
+          >
           <View style={styles.modalContent}>
             <Text style={styles.modalTitle}>
               {editingSection ? "Editar sección" : "Nueva sección"}
@@ -410,12 +419,20 @@ export default function AdminRoutineManagerScreen() {
               </Pressable>
             </View>
           </View>
-        </View>
+          </ScrollView>
+        </KeyboardAvoidingView>
       </Modal>
 
       {/* Modal Actividad */}
       <Modal visible={taskModalVisible} transparent animationType="fade">
-        <View style={styles.modalOverlay}>
+        <KeyboardAvoidingView
+          style={styles.modalOverlay}
+          behavior={Platform.OS === "ios" ? "padding" : undefined}
+        >
+          <ScrollView
+            contentContainerStyle={{ flexGrow: 1, justifyContent: "center" }}
+            keyboardShouldPersistTaps="handled"
+          >
           <View style={styles.modalContent}>
             <Text style={styles.modalTitle}>
               {editingTask ? "Editar actividad" : "Nueva actividad"}
@@ -523,7 +540,8 @@ export default function AdminRoutineManagerScreen() {
               </Pressable>
             </View>
           </View>
-        </View>
+          </ScrollView>
+        </KeyboardAvoidingView>
       </Modal>
     </View>
   );

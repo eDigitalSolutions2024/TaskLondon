@@ -2,7 +2,9 @@ import React, { useCallback, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  KeyboardAvoidingView,
   Modal,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -236,8 +238,14 @@ export default function UsersManagerScreen() {
 
       {/* Modal Crear/Editar Colaborador */}
       <Modal visible={modalVisible} transparent animationType="fade">
-        <View style={styles.modalOverlay}>
-          <ScrollView contentContainerStyle={{ flexGrow: 1, justifyContent: "center" }}>
+        <KeyboardAvoidingView
+          style={styles.modalOverlay}
+          behavior={Platform.OS === "ios" ? "padding" : undefined}
+        >
+          <ScrollView
+            contentContainerStyle={{ flexGrow: 1, justifyContent: "center" }}
+            keyboardShouldPersistTaps="handled"
+          >
             <View style={styles.modalContent}>
               <Text style={styles.modalTitle}>{editingUser ? "Editar colaborador" : "Nuevo colaborador"}</Text>
 
@@ -346,7 +354,7 @@ export default function UsersManagerScreen() {
               </View>
             </View>
           </ScrollView>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
     </View>
   );

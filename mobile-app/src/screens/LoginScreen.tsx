@@ -26,6 +26,8 @@ export default function LoginScreen() {
   const { login } = useAuth();
   const insets = useSafeAreaInsets();
   const [name, setName] = useState("");
+  const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [shift, setShift] = useState<"apertura" | "cierre">(() => {
     const hour = new Date().getHours();
     return hour >= 15 ? "cierre" : "apertura";
@@ -45,9 +47,13 @@ export default function LoginScreen() {
       Alert.alert("Dato requerido", "Por favor ingresa tu nombre de usuario o colaborador.");
       return;
     }
+    if (isAdminInput && !password.trim()) {
+      Alert.alert("Contraseña requerida", "Ingresa la contraseña de administrador para continuar.");
+      return;
+    }
     setSubmitting(true);
     try {
-      await login(name.trim(), undefined, isAdminInput ? undefined : shift);
+      await login(name.trim(), isAdminInput ? password : undefined, isAdminInput ? undefined : shift, isAdminInput);
     } catch (err) {
       Alert.alert("No se pudo iniciar sesión", err instanceof Error ? err.message : "Intenta de nuevo");
     } finally {
@@ -132,6 +138,40 @@ export default function LoginScreen() {
                 placeholderTextColor={colors.textMuted}
               />
             </View>
+
+            {/* Campo: Contraseña (Solo visible para administradores) */}
+            {isAdminInput ? (
+              <>
+                <Text style={styles.inputLabel}>
+                  <Ionicons name="lock-closed-outline" size={14} color={colors.primary} /> Contraseña
+                </Text>
+                <View style={[styles.inputWrapper, styles.inputWrapperAdmin]}>
+                  <MaterialCommunityIcons
+                    name="key-variant"
+                    size={22}
+                    color="#7A1C28"
+                    style={styles.inputIcon}
+                  />
+                  <TextInput
+                    style={styles.input}
+                    value={password}
+                    onChangeText={setPassword}
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    secureTextEntry={!showPassword}
+                    placeholder="Contraseña de administrador..."
+                    placeholderTextColor={colors.textMuted}
+                  />
+                  <Pressable onPress={() => setShowPassword((v) => !v)} hitSlop={8}>
+                    <Ionicons
+                      name={showPassword ? "eye-off-outline" : "eye-outline"}
+                      size={20}
+                      color={colors.textMuted}
+                    />
+                  </Pressable>
+                </View>
+              </>
+            ) : null}
 
             {/* Selector de Turno (Solo visible para colaboradores) */}
             {!isAdminInput ? (
