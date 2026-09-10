@@ -32,7 +32,8 @@
       ]
     },
     "extra": {
-      "apiUrl": "http://192.168.1.162:4000",
+      "apiUrl": "https://api.londoncafecdj.com",
+      "_apiUrl_NOTE": "PLACEHOLDER - reemplaza con tu dominio real antes de compilar para producción",
       "eas": {
         "projectId": "5d810cc1-362e-4387-87db-1ea7c4dfc75d"
       }
