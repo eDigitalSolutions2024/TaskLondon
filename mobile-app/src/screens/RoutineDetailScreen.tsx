@@ -132,7 +132,7 @@ export default function RoutineDetailScreen() {
   const navigation = useNavigation<Nav>();
   const route = useRoute<Rt>();
   const insets = useSafeAreaInsets();
-  const { routineId, routineName } = route.params;
+  const { routineId, routineName, historyRunId, readOnly } = route.params;
 
   const { user } = useAuth();
   const [run, setRun] = useState<RoutineRunWithProgress | null>(null);
@@ -142,15 +142,17 @@ export default function RoutineDetailScreen() {
 
   const load = useCallback(async () => {
     try {
-      const started = await api.startRun(routineId);
-      const full = await api.getRun(started._id);
+      // Si viene de Historial, cargar ESA ejecución puntual directo (sin
+      // startRun, que siempre resuelve/crea la ejecución de HOY y nos haría
+      // perder los datos/fotos del día que el admin quiere revisar).
+      const full = historyRunId ? await api.getRun(historyRunId) : await api.getRun((await api.startRun(routineId))._id);
       setRun(full);
     } catch (err) {
       Alert.alert("Error", err instanceof Error ? err.message : "No se pudo cargar la rutina");
     } finally {
       setLoading(false);
     }
-  }, [routineId]);
+  }, [routineId, historyRunId]);
 
   useFocusEffect(
     useCallback(() => {
@@ -288,6 +290,7 @@ export default function RoutineDetailScreen() {
                   runId: run._id,
                   sectionId: section.sectionId,
                   sectionName: section.name ?? "Sección",
+                  readOnly,
                 })
               }
             >
@@ -355,16 +358,25 @@ export default function RoutineDetailScreen() {
           );
         })}
 
-        {/* Actions & Incidents */}
-        <Pressable
-          style={({ pressed }) => [styles.incidentButton, pressed && styles.btnPressed]}
-          onPress={() => setIncidentModalVisible(true)}
-        >
-          <Ionicons name="warning-outline" size={18} color={colors.danger} />
-          <Text style={styles.incidentButtonText}>Reportar Incidencia Global</Text>
-        </Pressable>
+        {readOnly && (
+          <View style={styles.completedNotice}>
+            <Ionicons name="eye-outline" size={20} color={colors.primary} />
+            <Text style={styles.completedNoticeText}>Viendo historial (solo lectura)</Text>
+          </View>
+        )}
 
-        {progress.allRequiredCompleted && run.status !== "completed" && (
+        {/* Actions & Incidents */}
+        {!readOnly && (
+          <Pressable
+            style={({ pressed }) => [styles.incidentButton, pressed && styles.btnPressed]}
+            onPress={() => setIncidentModalVisible(true)}
+          >
+            <Ionicons name="warning-outline" size={18} color={colors.danger} />
+            <Text style={styles.incidentButtonText}>Reportar Incidencia Global</Text>
+          </Pressable>
+        )}
+
+        {!readOnly && progress.allRequiredCompleted && run.status !== "completed" && (
           <Pressable
             style={({ pressed }) => [styles.completeButton, pressed && styles.btnPressed, completing && styles.btnDisabled]}
             onPress={handleComplete}

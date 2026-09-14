@@ -18,10 +18,23 @@ import { toAbsoluteUrl } from "../../api/client";
 import { colors, radius, spacing } from "../../theme";
 import { TaskInputProps } from "./types";
 import { promptPhotoSelection } from "../../utils/photoPicker";
+import PhotoViewerModal from "../PhotoViewerModal";
 
 export type EvaluationStatus = "bien" | "falla" | "na";
 
-export default function StandardTaskInput({ task, result, submitting, onSubmit }: TaskInputProps) {
+const STATUS_LABEL: Record<EvaluationStatus, string> = {
+  bien: "Bien",
+  falla: "Falla",
+  na: "N/A",
+};
+
+const STATUS_COLOR: Record<EvaluationStatus, string> = {
+  bien: colors.success,
+  falla: colors.danger,
+  na: colors.textMuted,
+};
+
+export default function StandardTaskInput({ task, result, submitting, onSubmit, readOnly }: TaskInputProps) {
   // Inicializar estado evaluativo
   const initialStatus = (): EvaluationStatus | null => {
     const val = result?.value;
@@ -49,6 +62,7 @@ export default function StandardTaskInput({ task, result, submitting, onSubmit }
   const [comment, setComment] = useState(result?.comment ?? "");
   const [photos, setPhotos] = useState<string[]>(initialPhotos());
   const [uploading, setUploading] = useState(false);
+  const [viewerUri, setViewerUri] = useState<string | null>(null);
 
   const busy = uploading || submitting;
 
@@ -94,6 +108,62 @@ export default function StandardTaskInput({ task, result, submitting, onSubmit }
       photoUrls: photos,
       comment: comment.trim() || undefined,
     });
+  }
+
+  if (readOnly) {
+    return (
+      <View style={styles.readOnlyCard}>
+        <View style={styles.readOnlyRow}>
+          <Text style={styles.readOnlyLabel}>Evaluación</Text>
+          {status ? (
+            <View style={[styles.readOnlyStatusPill, { borderColor: STATUS_COLOR[status], backgroundColor: `${STATUS_COLOR[status]}14` }]}>
+              <Ionicons
+                name={status === "bien" ? "checkmark-circle" : status === "falla" ? "close-circle" : "remove-circle"}
+                size={15}
+                color={STATUS_COLOR[status]}
+              />
+              <Text style={[styles.readOnlyStatusText, { color: STATUS_COLOR[status] }]}>{STATUS_LABEL[status]}</Text>
+            </View>
+          ) : (
+            <Text style={styles.readOnlyEmptyText}>Sin registrar</Text>
+          )}
+        </View>
+
+        {!!comment && (
+          <View style={styles.readOnlyCommentBox}>
+            <Ionicons name="chatbox-ellipses-outline" size={14} color={colors.textMuted} style={styles.readOnlyCommentIcon} />
+            <Text style={styles.readOnlyComment}>{comment}</Text>
+          </View>
+        )}
+
+        <View style={styles.readOnlyRow}>
+          <Text style={styles.readOnlyLabel}>
+            Evidencia {photos.length > 0 ? `(${photos.length} ${photos.length === 1 ? "foto" : "fotos"})` : ""}
+          </Text>
+        </View>
+
+        {photos.length > 0 ? (
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.photosScroll}>
+            {photos.map((photo, index) => (
+              <Pressable
+                key={`${photo}-${index}`}
+                style={styles.readOnlyPhotoThumbWrapper}
+                onPress={() => setViewerUri(toAbsoluteUrl(photo) ?? null)}
+              >
+                <Image source={{ uri: toAbsoluteUrl(photo) }} style={styles.photoThumb} />
+                <View style={styles.readOnlyPhotoZoomBadge}>
+                  <Ionicons name="expand-outline" size={12} color="#fff" />
+                </View>
+              </Pressable>
+            ))}
+          </ScrollView>
+        ) : (
+          <Text style={styles.readOnlyEmptyText}>Sin fotos de evidencia</Text>
+        )}
+
+        <PhotoViewerModal uri={viewerUri} onClose={() => setViewerUri(null)} />
+      </View>
+    );
   }
 
   return (
@@ -180,7 +250,9 @@ export default function StandardTaskInput({ task, result, submitting, onSubmit }
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.photosScroll}>
             {photos.map((photo, index) => (
               <View key={`${photo}-${index}`} style={styles.photoThumbWrapper}>
-                <Image source={{ uri: toAbsoluteUrl(photo) }} style={styles.photoThumb} />
+                <Pressable onPress={() => setViewerUri(toAbsoluteUrl(photo) ?? null)}>
+                  <Image source={{ uri: toAbsoluteUrl(photo) }} style={styles.photoThumb} />
+                </Pressable>
                 <Pressable
                   style={styles.removePhotoBtn}
                   onPress={() => handleRemovePhoto(index)}
@@ -229,6 +301,8 @@ export default function StandardTaskInput({ task, result, submitting, onSubmit }
           </>
         )}
       </Pressable>
+
+      <PhotoViewerModal uri={viewerUri} onClose={() => setViewerUri(null)} />
     </View>
   );
 }
@@ -419,5 +493,82 @@ const styles = StyleSheet.create({
     color: colors.white,
     fontWeight: "700",
     fontSize: 15,
+  },
+  readOnlyCard: {
+    backgroundColor: colors.background,
+    borderRadius: radius.md,
+    padding: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    gap: spacing.sm,
+  },
+  readOnlyRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  readOnlyLabel: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: colors.textMuted,
+    textTransform: "uppercase",
+    letterSpacing: 0.4,
+  },
+  readOnlyStatusPill: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.xs,
+    borderWidth: 1.5,
+    borderRadius: radius.full,
+    paddingHorizontal: spacing.sm + 2,
+    paddingVertical: 4,
+  },
+  readOnlyStatusText: {
+    fontWeight: "700",
+    fontSize: 13,
+  },
+  readOnlyCommentBox: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: spacing.xs,
+    backgroundColor: colors.card,
+    borderRadius: radius.sm,
+    padding: spacing.sm,
+    borderLeftWidth: 3,
+    borderLeftColor: colors.primary,
+  },
+  readOnlyCommentIcon: {
+    marginTop: 2,
+  },
+  readOnlyComment: {
+    flex: 1,
+    fontSize: 13,
+    color: colors.text,
+    lineHeight: 18,
+  },
+  readOnlyEmptyText: {
+    fontSize: 12,
+    color: colors.textMuted,
+    fontStyle: "italic",
+  },
+  readOnlyPhotoThumbWrapper: {
+    width: 96,
+    height: 96,
+    borderRadius: radius.sm,
+    overflow: "hidden",
+    borderWidth: 1,
+    borderColor: colors.border,
+    position: "relative",
+  },
+  readOnlyPhotoZoomBadge: {
+    position: "absolute",
+    right: 4,
+    bottom: 4,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: "rgba(0,0,0,0.55)",
+    alignItems: "center",
+    justifyContent: "center",
   },
 });

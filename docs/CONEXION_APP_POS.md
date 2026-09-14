@@ -73,6 +73,45 @@ curl http://localhost:4000/health
 
 Nota: existe también un `npm run seed` (`node src/seed.js`) para poblar datos de prueba si la base está vacía.
 
+#### ⚠️ Error común: `EADDRINUSE: address already in use 0.0.0.0:4000`
+
+Significa que **ya hay algo corriendo en el puerto 4000** (puede ser un backend que quedó abierto de una sesión anterior, tuyo o de un asistente). No es un error real del código, solo un choque de puerto. Pasos para diagnosticar y resolver (PowerShell):
+
+**1. Primero, revisa si en realidad ya está funcionando** (a veces no hace falta matar nada):
+```powershell
+curl http://localhost:4000/health
+```
+Si responde `{"ok":true}`, ya tienes un backend sano corriendo — no necesitas hacer más nada, solo úsalo.
+
+**2. Si quieres saber qué proceso ocupa el puerto:**
+```powershell
+netstat -ano | findstr :4000
+```
+Devuelve algo como:
+```
+TCP    0.0.0.0:4000    0.0.0.0:0    LISTENING    2948
+```
+El último número (`2948` en el ejemplo) es el **PID** del proceso.
+
+**3. (Opcional) Verifica qué es antes de matarlo:**
+```powershell
+Get-Process -Id 2948
+```
+Debería ser `node`. Si es otra cosa completamente distinta, investiga antes de matarlo.
+
+**4. Mátalo:**
+```powershell
+taskkill /F /PID 2948
+```
+
+**5. Confirma que el puerto quedó libre:**
+```powershell
+netstat -ano | findstr :4000
+```
+Si no devuelve nada, ya está libre — corre `npm run dev` de nuevo.
+
+**Nota sobre `nodemon`:** a veces al detener un proceso de `nodemon` (con Ctrl+C o matándolo desde fuera) puede quedar un proceso **hijo** de Node vivo, ocupando el puerto igual. Si después de matar el PID de `netstat` el error persiste, repite el paso 2 — puede aparecer un PID distinto (el hijo) y hay que matarlo también.
+
 (Nota histórica: en un punto de este trabajo se levantó por error el backend del POS en `LondonApp/LondonCafe/apps/api` pensando que era el mismo proyecto. Ese backend **no sirve para mobile-app** — ver sección de corrección arriba. Si en algún momento se necesita levantar el POS real por otra razón, sus pasos eran: `cd LondonApp/LondonCafe && npm install --workspaces`, luego `cd apps/api && npm run seed && npm run dev`. Ojo: instalar `npm install` directo dentro de `apps/api` sin pasar por la raíz del monorepo rompe el hoisting de dependencias como `basic-ftp`.)
 
 ### 4.3 Encontrar tu IP local
@@ -136,3 +175,25 @@ Para alternar: comentar una línea y descomentar la otra con `#`, nunca las dos 
 - Remoto `origin` → `https://github.com/jose-esquivel-dev/TaskLondon_Dev.git`
 - Ambos están sincronizados al mismo commit tras borrar `admin-web`.
 - El archivo `mobile-app/.env` con la IP local **no se sube a git** (ignorado), así que cada quien configura el suyo.
+
+## 9. Historial con fotos (modo solo-lectura) — implementado
+
+El admin ahora puede, desde la pestaña **Historial** de la app móvil, tocar cualquier rutina de cualquier día y ver, tarea por tarea, el estado (Bien/Falla/N/A), el comentario y las fotos de evidencia reales de ESE día — antes esto no funcionaba (ver bug abajo).
+
+**Archivos tocados:**
+- `mobile-app/src/navigation/types.ts` — se agregó `historyRunId` y `readOnly` a los params de navegación.
+- `mobile-app/src/screens/HomeScreen.tsx` — al tocar una rutina del historial, ahora manda el `runId` real de esa ejecución + `readOnly: true`. También se agregó paginación del historial de 4 en 4 días (botón "Ver 4 días más", tope 91 días).
+- `mobile-app/src/screens/RoutineDetailScreen.tsx` — si recibe `historyRunId`, carga esa ejecución puntual con `getRun` directo (antes SIEMPRE usaba `startRun`, que trae/crea la rutina de HOY sin importar qué día tocaras — ese era el bug original de fondo). Oculta botones de edición/incidencias en modo lectura.
+- `mobile-app/src/screens/SectionDetailScreen.tsx` — propaga `readOnly` a cada tarea, oculta botones de incidencia.
+- `mobile-app/src/components/task-inputs/StandardTaskInput.tsx` — nueva vista de solo lectura por tarea (badge de estado + comentario + fotos), sin botones de edición.
+- `mobile-app/src/components/PhotoViewerModal.tsx` (nuevo) — visor de foto a pantalla completa, se abre al tocar cualquier miniatura (tanto en historial como al subir una foto nueva).
+
+### 🐛 Bug encontrado y corregido: "tarjeta en blanco" en el Historial
+
+**Síntoma:** al abrir una rutina completada desde el Historial, cada tarea mostraba el título pero la tarjeta se veía enorme y en blanco hacia abajo, bloqueando el scroll (se alcanzaba a ver el inicio de la siguiente tarea pero no se podía seguir bajando bien).
+
+**Causa real:** en `StandardTaskInput.tsx`, la vista de solo-lectura reutilizó el estilo `photoThumb` (`width: "100%", height: "100%"`) para mostrar la miniatura de la foto, PERO sin envolverlo en un contenedor de tamaño fijo (a diferencia del modo edición, que sí usa `photoThumbWrapper` de 90x90). Un `Image` con `height: "100%"` sin un padre con altura definida se expande sin control en React Native — eso generaba el bloque gigante en blanco.
+
+**Fix:** se agregó `readOnlyPhotoThumbWrapper` (90x90, con `overflow: hidden`) como contenedor de la miniatura en modo lectura, igual que ya existía para el modo edición. Confirmado con `npx tsc --noEmit` sin errores.
+
+**Cómo se diagnosticó:** no había datos completados en la BD local para reproducir, así que se simuló el flujo completo vía `curl` directo al backend (login → iniciar rutina real "Apertura" → completar sus 17 tareas con foto/comentario → finalizar) para confirmar que el backend entregaba los datos perfectamente (`value`, `comment`, `photoUrl`, `photoUrls` todos presentes) — eso descartó el backend y apuntó a un bug puramente de renderizado en el frontend.

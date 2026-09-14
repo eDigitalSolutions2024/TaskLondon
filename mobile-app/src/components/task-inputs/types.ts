@@ -5,4 +5,5 @@ export interface TaskInputProps {
   result: TaskResult | null;
   submitting: boolean;
   onSubmit: (body: SubmitTaskResultBody) => Promise<void> | void;
+  readOnly?: boolean;
 }

@@ -48,7 +48,7 @@ const BG_ICONS: Array<{
 export default function SectionDetailScreen() {
   const route = useRoute<Rt>();
   const insets = useSafeAreaInsets();
-  const { runId, sectionId, sectionName } = route.params;
+  const { runId, sectionId, sectionName, readOnly } = route.params;
 
   const { user } = useAuth();
   const [data, setData] = useState<RunSectionResponse | null>(null);
@@ -253,47 +253,54 @@ export default function SectionDetailScreen() {
                     result={task.result}
                     submitting={submittingTaskId === task._id}
                     onSubmit={(body) => handleSubmit(task, body)}
+                    readOnly={readOnly}
                   />
                 </View>
 
-                <Pressable
-                  style={styles.taskIncidentButton}
-                  onPress={() => {
-                    setIncidentTaskId(task._id);
-                    setIncidentModalVisible(true);
-                  }}
-                >
-                  <Ionicons name="alert-circle-outline" size={15} color={colors.warning} />
-                  <Text style={styles.taskIncidentButtonText}>Reportar incidencia en este punto</Text>
-                </Pressable>
+                {!readOnly && (
+                  <Pressable
+                    style={styles.taskIncidentButton}
+                    onPress={() => {
+                      setIncidentTaskId(task._id);
+                      setIncidentModalVisible(true);
+                    }}
+                  >
+                    <Ionicons name="alert-circle-outline" size={15} color={colors.warning} />
+                    <Text style={styles.taskIncidentButtonText}>Reportar incidencia en este punto</Text>
+                  </Pressable>
+                )}
               </View>
             );
           })}
 
-          <Pressable
-            style={({ pressed }) => [styles.incidentButton, pressed && styles.btnPressed]}
-            onPress={() => {
-              setIncidentTaskId(undefined);
-              setIncidentModalVisible(true);
-            }}
-          >
-            <Ionicons name="warning-outline" size={18} color={colors.danger} />
-            <Text style={styles.incidentButtonText}>Reportar Incidencia de Sección</Text>
-          </Pressable>
+          {!readOnly && (
+            <Pressable
+              style={({ pressed }) => [styles.incidentButton, pressed && styles.btnPressed]}
+              onPress={() => {
+                setIncidentTaskId(undefined);
+                setIncidentModalVisible(true);
+              }}
+            >
+              <Ionicons name="warning-outline" size={18} color={colors.danger} />
+              <Text style={styles.incidentButtonText}>Reportar Incidencia de Sección</Text>
+            </Pressable>
+          )}
         </ScrollView>
       </TouchableWithoutFeedback>
 
-      <IncidentModal
-        visible={incidentModalVisible}
-        onClose={() => setIncidentModalVisible(false)}
-        onSubmitted={() => {
-          setIncidentModalVisible(false);
-          load();
-        }}
-        runId={runId}
-        sectionId={sectionId}
-        taskId={incidentTaskId}
-      />
+      {!readOnly && (
+        <IncidentModal
+          visible={incidentModalVisible}
+          onClose={() => setIncidentModalVisible(false)}
+          onSubmitted={() => {
+            setIncidentModalVisible(false);
+            load();
+          }}
+          runId={runId}
+          sectionId={sectionId}
+          taskId={incidentTaskId}
+        />
+      )}
     </KeyboardAvoidingView>
   );
 }

@@ -1,12 +1,16 @@
 import React, { useCallback, useMemo, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   FlatList,
   Image,
+  Modal,
   Pressable,
   RefreshControl,
+  ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -16,7 +20,7 @@ import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useAuth } from "../context/AuthContext";
 import * as api from "../api/endpoints";
 import { RootStackParamList } from "../navigation/types";
-import { Routine, RoutineRun, RoutineRunHistory, RoutineSection } from "../types";
+import { Routine, RoutineRun, RoutineRunHistory, RoutineSection, RoutineType, Shift } from "../types";
 import { colors, radius, spacing } from "../theme";
 import ProgressBar from "../components/ProgressBar";
 import RoutineIcon from "../components/RoutineIcon";
@@ -77,6 +81,17 @@ export default function HomeScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [expandedHistoryDays, setExpandedHistoryDays] = useState<Set<string>>(() => new Set([todayStr()]));
+  // Cuántos días hacia atrás trae el historial. Arranca en 14 (13 días atrás
+  // + hoy) y el admin puede pedir más con el botón "Ver días anteriores".
+  const [historyDaysBack, setHistoryDaysBack] = useState(3); // 4 días (hoy + 3 atrás)
+
+  // Modal de creación de rutina (solo admin)
+  const [createModalVisible, setCreateModalVisible] = useState(false);
+  const [newRoutineName, setNewRoutineName] = useState("");
+  const [newRoutineType, setNewRoutineType] = useState<RoutineType>("custom");
+  const [newRoutineShift, setNewRoutineShift] = useState<Shift | "ambos">("ambos");
+  const [newRoutineSchedule, setNewRoutineSchedule] = useState("");
+  const [creatingRoutine, setCreatingRoutine] = useState(false);
 
   const load = useCallback(async () => {
     if (!user) return;
@@ -87,7 +102,7 @@ export default function HomeScreen() {
         api.getRuns({ establishmentId: user.establishmentId, date: todayStr() }),
         api.getSections(user.establishmentId),
         user.role === "admin"
-          ? api.getHistory({ establishmentId: user.establishmentId, from: daysAgoStr(13), to: todayStr() })
+          ? api.getHistory({ establishmentId: user.establishmentId, from: daysAgoStr(historyDaysBack), to: todayStr() })
           : Promise.resolve([]),
       ]);
 
@@ -116,7 +131,7 @@ export default function HomeScreen() {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [user]);
+  }, [user, historyDaysBack]);
 
   useFocusEffect(
     useCallback(() => {
@@ -220,10 +235,44 @@ export default function HomeScreen() {
     navigation.navigate("RoutineDetail", { routineId, routineName });
   }
 
+  function openCreateRoutine() {
+    setNewRoutineName("");
+    setNewRoutineType("custom");
+    setNewRoutineShift("ambos");
+    setNewRoutineSchedule("");
+    setCreateModalVisible(true);
+  }
+
+  async function handleCreateRoutine() {
+    if (!newRoutineName.trim()) {
+      Alert.alert("Dato requerido", "Ingresa el nombre de la rutina.");
+      return;
+    }
+    if (!user) return;
+    setCreatingRoutine(true);
+    try {
+      await api.createRoutine({
+        name: newRoutineName.trim(),
+        type: newRoutineType,
+        shift: newRoutineShift,
+        schedule: newRoutineSchedule.trim() || undefined,
+        establishmentId: user.establishmentId,
+      });
+      setCreateModalVisible(false);
+      await load();
+    } catch (err) {
+      Alert.alert("Error", err instanceof Error ? err.message : "No se pudo crear la rutina");
+    } finally {
+      setCreatingRoutine(false);
+    }
+  }
+
   function openHistoryRoutine(hist: RoutineRunHistory) {
     const routineId = typeof hist.routineId === "object" ? hist.routineId._id : hist.routineId;
     const routineName = typeof hist.routine === "object" ? hist.routine.name : "Rutina";
-    navigation.navigate("RoutineDetail", { routineId, routineName });
+    // historyRunId fuerza a RoutineDetailScreen a cargar ESTA ejecución pasada
+    // (getRun directo) en vez de startRun, que siempre trae/crea la de HOY.
+    navigation.navigate("RoutineDetail", { routineId, routineName, historyRunId: hist._id, readOnly: true });
   }
 
   if (loading) {
@@ -493,6 +542,14 @@ export default function HomeScreen() {
           keyExtractor={(item) => item.routine._id}
           contentContainerStyle={styles.list}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(); }} />}
+          ListHeaderComponent={
+            isAdmin ? (
+              <Pressable style={styles.createRoutineBtn} onPress={openCreateRoutine}>
+                <Ionicons name="add-circle" size={18} color={colors.white} />
+                <Text style={styles.createRoutineBtnText}>Nueva rutina</Text>
+              </Pressable>
+            ) : null
+          }
           ListEmptyComponent={
             !error ? (
               <View style={styles.emptyContainer}>
@@ -697,6 +754,17 @@ export default function HomeScreen() {
           keyExtractor={(group) => group.day}
           contentContainerStyle={styles.list}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(); }} />}
+          ListFooterComponent={
+            historyDaysBack < 91 ? (
+              <Pressable
+                style={styles.loadMoreHistoryBtn}
+                onPress={() => setHistoryDaysBack((prev) => Math.min(prev + 4, 91))}
+              >
+                <Ionicons name="calendar-outline" size={16} color={colors.primary} />
+                <Text style={styles.loadMoreHistoryText}>Ver 4 días más ({historyDaysBack + 1} días en total)</Text>
+              </Pressable>
+            ) : null
+          }
           ListEmptyComponent={
             !error ? (
               <View style={styles.emptyContainer}>
@@ -810,6 +878,73 @@ export default function HomeScreen() {
           }}
         />
       )}
+
+      <Modal visible={createModalVisible} transparent animationType="fade" onRequestClose={() => setCreateModalVisible(false)}>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalCard}>
+            <Text style={styles.modalTitle}>Nueva rutina</Text>
+
+            <Text style={styles.modalLabel}>Nombre</Text>
+            <TextInput
+              style={styles.modalInput}
+              placeholder="Ej. Revisión de cámaras"
+              placeholderTextColor={colors.textMuted}
+              value={newRoutineName}
+              onChangeText={setNewRoutineName}
+            />
+
+            <Text style={styles.modalLabel}>Turno</Text>
+            <View style={styles.modalPillRow}>
+              {(["apertura", "cierre", "ambos"] as const).map((s) => (
+                <Pressable
+                  key={s}
+                  style={[styles.modalPill, newRoutineShift === s && styles.modalPillActive]}
+                  onPress={() => setNewRoutineShift(s)}
+                >
+                  <Text style={[styles.modalPillText, newRoutineShift === s && styles.modalPillTextActive]}>
+                    {s === "apertura" ? "Apertura" : s === "cierre" ? "Cierre" : "Ambos"}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
+
+            <Text style={styles.modalLabel}>Tipo</Text>
+            <View style={styles.modalPillRow}>
+              {(["apertura", "operacion", "cierre", "cambio_turno", "custom"] as RoutineType[]).map((t) => (
+                <Pressable
+                  key={t}
+                  style={[styles.modalPill, newRoutineType === t && styles.modalPillActive]}
+                  onPress={() => setNewRoutineType(t)}
+                >
+                  <Text style={[styles.modalPillText, newRoutineType === t && styles.modalPillTextActive]}>{t}</Text>
+                </Pressable>
+              ))}
+            </View>
+
+            <Text style={styles.modalLabel}>Horario (opcional)</Text>
+            <TextInput
+              style={styles.modalInput}
+              placeholder="Ej. 06:00 - 08:00"
+              placeholderTextColor={colors.textMuted}
+              value={newRoutineSchedule}
+              onChangeText={setNewRoutineSchedule}
+            />
+
+            <View style={styles.modalBtnRow}>
+              <Pressable style={styles.modalBtnCancel} onPress={() => setCreateModalVisible(false)} disabled={creatingRoutine}>
+                <Text style={styles.modalBtnCancelText}>Cancelar</Text>
+              </Pressable>
+              <Pressable style={styles.modalBtnSave} onPress={handleCreateRoutine} disabled={creatingRoutine}>
+                {creatingRoutine ? (
+                  <ActivityIndicator color={colors.white} size="small" />
+                ) : (
+                  <Text style={styles.modalBtnSaveText}>Crear</Text>
+                )}
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -1611,5 +1746,128 @@ const styles = StyleSheet.create({
   dayCard: {
     marginTop: spacing.sm,
     marginLeft: spacing.sm,
+  },
+  loadMoreHistoryBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: spacing.xs,
+    borderWidth: 1.5,
+    borderStyle: "dashed",
+    borderColor: colors.primary,
+    borderRadius: radius.sm,
+    paddingVertical: spacing.md,
+    marginTop: spacing.sm,
+    marginBottom: spacing.xl,
+  },
+  loadMoreHistoryText: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: colors.primary,
+  },
+  createRoutineBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: spacing.xs,
+    backgroundColor: colors.primary,
+    borderRadius: radius.sm,
+    paddingVertical: spacing.md,
+    marginBottom: spacing.md,
+  },
+  createRoutineBtnText: {
+    color: colors.white,
+    fontWeight: "700",
+    fontSize: 14,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    justifyContent: "center",
+    padding: spacing.lg,
+  },
+  modalCard: {
+    backgroundColor: colors.card,
+    borderRadius: radius.lg,
+    padding: spacing.lg,
+    maxHeight: "85%",
+  },
+  modalTitle: {
+    fontSize: 17,
+    fontWeight: "800",
+    color: colors.text,
+    marginBottom: spacing.md,
+  },
+  modalLabel: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: colors.textMuted,
+    marginBottom: spacing.xs,
+    marginTop: spacing.sm,
+  },
+  modalInput: {
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.sm,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm + 2,
+    fontSize: 14,
+    color: colors.text,
+    backgroundColor: colors.background,
+  },
+  modalPillRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: spacing.xs,
+  },
+  modalPill: {
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.full,
+    paddingHorizontal: spacing.sm + 2,
+    paddingVertical: 6,
+    backgroundColor: colors.background,
+  },
+  modalPillActive: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+  },
+  modalPillText: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: colors.text,
+  },
+  modalPillTextActive: {
+    color: colors.white,
+  },
+  modalBtnRow: {
+    flexDirection: "row",
+    gap: spacing.sm,
+    marginTop: spacing.lg,
+  },
+  modalBtnCancel: {
+    flex: 1,
+    paddingVertical: spacing.md,
+    borderRadius: radius.sm,
+    borderWidth: 1,
+    borderColor: colors.border,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  modalBtnCancelText: {
+    color: colors.text,
+    fontWeight: "600",
+  },
+  modalBtnSave: {
+    flex: 1,
+    paddingVertical: spacing.md,
+    borderRadius: radius.sm,
+    backgroundColor: colors.primary,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  modalBtnSaveText: {
+    color: colors.white,
+    fontWeight: "700",
   },
 });

@@ -157,6 +157,28 @@ export default function AdminRoutineManagerScreen() {
     );
   }
 
+  async function handleDeleteRoutine() {
+    Alert.alert(
+      "Eliminar rutina",
+      `¿Deseas eliminar la rutina "${routineName}"? Sus secciones y actividades ya no aparecerán, pero el historial ya registrado se conserva.`,
+      [
+        { text: "Cancelar", style: "cancel" },
+        {
+          text: "Eliminar",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              await api.deleteRoutine(routineId);
+              navigation.goBack();
+            } catch (err) {
+              Alert.alert("Error", err instanceof Error ? err.message : "No se pudo eliminar la rutina");
+            }
+          },
+        },
+      ]
+    );
+  }
+
   // --- Manejo Tareas / Actividades ---
   function openAddTask(sectionId: string) {
     setTargetSectionId(sectionId);
@@ -334,6 +356,11 @@ export default function AdminRoutineManagerScreen() {
             </View>
           ))
         )}
+
+        <Pressable style={styles.deleteRoutineBtn} onPress={handleDeleteRoutine}>
+          <Ionicons name="trash-outline" size={18} color={colors.danger} />
+          <Text style={styles.deleteRoutineBtnText}>Eliminar Rutina</Text>
+        </Pressable>
       </ScrollView>
 
       {/* Modal Sección */}
@@ -861,5 +888,22 @@ const styles = StyleSheet.create({
   modalBtnSaveText: {
     color: colors.white,
     fontWeight: "700",
+  },
+  deleteRoutineBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: spacing.xs,
+    borderWidth: 1.5,
+    borderColor: colors.danger,
+    borderRadius: radius.sm,
+    paddingVertical: spacing.md,
+    marginTop: spacing.lg,
+    marginBottom: spacing.xl,
+  },
+  deleteRoutineBtnText: {
+    color: colors.danger,
+    fontWeight: "700",
+    fontSize: 14,
   },
 });
