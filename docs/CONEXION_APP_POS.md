@@ -1,18 +1,31 @@
-# Guía: Conectar mobile-app al backend del POS (LondonApp)
+# Guía: Conectar mobile-app a SU backend (TaskLondon/backend)
 
 Contexto completo de lo que se hizo y lo que falta, para retomar en cualquier momento.
+
+## ⚠️ CORRECCIÓN IMPORTANTE (leer primero)
+
+Al inicio de este trabajo se asumió, **erróneamente**, que `mobile-app` era la app del POS y que `TaskLondon/backend` era una versión vieja/simplificada de ese mismo POS. **Eso es incorrecto.**
+
+La realidad, confirmada revisando el código:
+
+- **`mobile-app`** es una app de **checklists / rutinas operativas** (rutinas, tareas, fotos de confirmación, incidencias, "establishments"). No tiene nada que ver con pedidos, mesas o cobros.
+- **`TaskLondon/backend`** es su backend **correcto y real** — tiene exactamente las rutas que la app consume: `/auth`, `/establishments`, `/routines`, `/sections`, `/tasks`, `/runs`, `/incidents`, `/upload`.
+- **`LondonApp/LondonCafe`** es un sistema **totalmente distinto**: el POS de caja/pedidos/mesas/inventario. No comparte base de datos ni rutas con `mobile-app`. Si `mobile-app` apunta ahí, el login y todo lo demás fallará porque esas rutas no existen en el POS.
+
+**Por lo tanto: `mobile-app` debe apuntar siempre a `TaskLondon/backend`, nunca a `LondonApp`.** Todo lo de abajo que mencione "backend" se refiere a `TaskLondon/backend`.
 
 ## 1. Mapa de proyectos en el equipo
 
 Hay **tres proyectos distintos** en el Escritorio, no confundirlos:
 
-| Carpeta | Qué es | Usar? |
+| Carpeta | Qué es | Usar con mobile-app? |
 |---|---|---|
-| `Desktop/TaskLondon` | Repo de este proyecto: contiene `mobile-app` (la app móvil real) y un `backend` viejo/simplificado que ya no se usa | `mobile-app` sí, `backend` no |
-| `Desktop/LondonApp/LondonCafe` | Clon del **POS real**, monorepo con `apps/api` (backend real, Node+TS+Mongo) y `apps/web` (interfaz de caja/mesero, usa impresoras — **NO tocar/borrar**, probablemente en uso real) | `apps/api` sí |
-| Producción en AWS | El backend real ya está en línea, usado por el negocio hoy mismo | Con cuidado |
+| `Desktop/TaskLondon/backend` | Backend real de la app de checklists/rutinas (Node+Express+Mongo) | **Sí, este es el correcto** |
+| `Desktop/TaskLondon/mobile-app` | App móvil de checklists/rutinas | — |
+| `Desktop/LondonApp/LondonCafe` | Clon del **POS real** (pedidos, mesas, caja, inventario), monorepo con `apps/api` y `apps/web` (interfaz de caja/mesero con impresoras — **NO tocar/borrar**, probablemente en uso real) | **No** — sistema aparte, sin relación con mobile-app |
+| Producción en AWS | Ahí vive (o debería vivir) el backend real de checklists, en uso por el negocio | Con cuidado |
 
-`TaskLondon/admin-web` (panel viejo sin usar) **ya se borró** y se subió (push) a ambos repos remotos.
+`TaskLondon/admin-web` (panel viejo sin usar, del proyecto de checklists) **ya se borró** y se subió (push) a ambos repos remotos.
 
 ## 2. Cómo la app móvil decide a qué backend conectarse
 
@@ -46,13 +59,11 @@ Start-Service MongoDB
 Get-Service MongoDB   # debe decir "Running"
 ```
 
-### 4.2 Backend real del POS (apps/api)
+### 4.2 Backend correcto de mobile-app (TaskLondon/backend)
 ```bash
-cd "C:\Users\User\Desktop\LondonApp\LondonCafe"
-npm install --workspaces        # instala TODO el monorepo (ya hecho, pero por si acaso)
-cd apps/api
-npm run seed                    # solo la primera vez / si hace falta
-npm run dev                     # levanta en http://0.0.0.0:4000
+cd "C:\Users\User\Desktop\TaskLondon\backend"
+npm install
+npm run dev                     # levanta en http://localhost:4000 (nodemon)
 ```
 Verificar que responde:
 ```bash
@@ -60,11 +71,9 @@ curl http://localhost:4000/health
 # debe devolver: {"ok":true}
 ```
 
-⚠️ Nota importante ya resuelta: la primera vez que se instaló `npm install` **dentro de `apps/api` directamente** (no desde la raíz del monorepo) rompió el *hoisting* de dependencias (`basic-ftp` no se encontraba). Si vuelve a pasar ese error, la solución es reinstalar desde la raíz:
-```bash
-cd "C:\Users\User\Desktop\LondonApp\LondonCafe"
-npm install --ignore-scripts --workspaces
-```
+Nota: existe también un `npm run seed` (`node src/seed.js`) para poblar datos de prueba si la base está vacía.
+
+(Nota histórica: en un punto de este trabajo se levantó por error el backend del POS en `LondonApp/LondonCafe/apps/api` pensando que era el mismo proyecto. Ese backend **no sirve para mobile-app** — ver sección de corrección arriba. Si en algún momento se necesita levantar el POS real por otra razón, sus pasos eran: `cd LondonApp/LondonCafe && npm install --workspaces`, luego `cd apps/api && npm run seed && npm run dev`. Ojo: instalar `npm install` directo dentro de `apps/api` sin pasar por la raíz del monorepo rompe el hoisting de dependencias como `basic-ftp`.)
 
 ### 4.3 Encontrar tu IP local
 ```powershell
