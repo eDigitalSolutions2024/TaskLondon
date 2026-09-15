@@ -32,8 +32,7 @@
       ]
     },
     "extra": {
-      "apiUrl": "https://api.londoncafecdj.com",
-      "_apiUrl_NOTE": "PLACEHOLDER - reemplaza con tu dominio real antes de compilar para producción",
+      "apiUrl": "https://api.londoncafejrz.com/checklist",
       "eas": {
         "projectId": "5d810cc1-362e-4387-87db-1ea7c4dfc75d"
       }
