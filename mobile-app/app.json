@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "London Cafe CDJ",
+    "name": "CheckLondon",
     "slug": "london-cafe-cdj",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -8,7 +8,7 @@
     "assetBundlePatterns": [
       "**/*"
     ],
-    "icon": "./assets/Logo.png",
+    "icon": "./assets/n_logo.png",
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.londoncafecdj.app",
@@ -21,8 +21,8 @@
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/Logo.png",
-        "backgroundColor": "#F8F5F2"
+        "foregroundImage": "./assets/n_logo.png",
+        "backgroundColor": "#FFFFFF"
       },
       "permissions": [
         "android.permission.CAMERA",
@@ -34,7 +34,7 @@
     "extra": {
       "apiUrl": "https://api.londoncafejrz.com/checklist",
       "eas": {
-        "projectId": "5d810cc1-362e-4387-87db-1ea7c4dfc75d"
+        "projectId": "20fd93e9-acbc-4d43-b52b-4aab317fb53c"
       }
     },
     "plugins": [
@@ -49,12 +49,12 @@
       [
         "expo-splash-screen",
         {
-          "image": "./assets/Logo.png",
+          "image": "./assets/n_logo.png",
           "resizeMode": "contain",
-          "backgroundColor": "#F8F5F2"
+          "backgroundColor": "#FFFFFF"
         }
       ]
     ],
-    "owner": "lxaztekxl-team"
+    "owner": "edtasks-team"
   }
 }
